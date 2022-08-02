@@ -6,17 +6,13 @@ import logging
 def capstats(interval=10):
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl capstats %i'" % interval
- retval = __salt__['docker.run']('so-zeek', cmd)
- 
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def check():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl check'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- 
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def cleanup(all=''):
@@ -39,29 +35,25 @@ def cleanup(all=''):
 def config():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl config'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def deploy():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl deploy'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def df():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl df'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def diag():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl diag'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def install(local=''):
@@ -84,15 +76,13 @@ def install(local=''):
 def netstats():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl netstats'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def nodes():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl nodes'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def restart(clean=''):
@@ -132,8 +122,7 @@ def scripts(c=''):
 def start():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl start'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def status(verbose=True):
@@ -142,19 +131,17 @@ def status(verbose=True):
  retval = __salt__['docker.run']('so-zeek', cmd)
  if not verbose:
    retval = __context__['retcode']
- logging.info('zeekctl_module: zeekctl.status retval: %s' % retval)
+ logging.info(f'zeekctl_module: zeekctl.status retval: {retval}')
  return retval
 
 
 def stop():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl stop'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)
 
 
 def top():
 
  cmd = "runuser -l zeek -c '/opt/zeek/bin/zeekctl top'"
- retval = __salt__['docker.run']('so-zeek', cmd)
- return retval
+ return __salt__['docker.run']('so-zeek', cmd)

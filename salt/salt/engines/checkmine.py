@@ -15,12 +15,14 @@ def start(interval=30):
       log.info('Successfully queried Salt mine for the CA.')
     except:
       log.error('Could not pull CA from the Salt mine.')
-      log.info('Removing /var/cache/salt/master/minions/%s/mine.p to force Salt mine to be repopulated.' % minionid)
+      log.info(
+          f'Removing /var/cache/salt/master/minions/{minionid}/mine.p to force Salt mine to be repopulated.'
+      )
       try:
-        remove('/var/cache/salt/master/minions/%s/mine.p' % minionid)
-        log.info('Removed /var/cache/salt/master/minions/%s/mine.p' % minionid)
+        remove(f'/var/cache/salt/master/minions/{minionid}/mine.p')
+        log.info(f'Removed /var/cache/salt/master/minions/{minionid}/mine.p')
       except FileNotFoundError:
-        log.error('/var/cache/salt/master/minions/%s/mine.p does not exist' % minionid)
+        log.error(f'/var/cache/salt/master/minions/{minionid}/mine.p does not exist')
 
       __salt__['mine.send'](name='x509.get_pem_entries', glob_path='/etc/pki/ca.crt')
       log.warning('Salt mine repopulated with /etc/pki/ca.crt')

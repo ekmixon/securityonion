@@ -28,7 +28,7 @@ defaultPortgroupsFilename = "/opt/so/saltstack/default/salt/firewall/portgroups.
 supportedProtocols = ['tcp', 'udp']
 
 def showUsage(options, args):
-  print('Usage: {} [OPTIONS] <COMMAND> [ARGS...]'.format(sys.argv[0]))
+  print(f'Usage: {sys.argv[0]} [OPTIONS] <COMMAND> [ARGS...]')
   print('  Options:')
   print('   --apply         - After updating the firewall configuration files, apply the new firewall state')
   print('   --defaultports  - Read port groups from default configuration files instead of local configuration.')
@@ -55,7 +55,9 @@ def showUsage(options, args):
   print('  Where:')
   print('   GROUP_NAME    - The name of an alias group (Ex: analyst)')
   print('   IP            - Either a single IP address (Ex: 8.8.8.8) or a CIDR block (Ex: 10.23.0.0/16).')
-  print('   PORT_PROTOCOL - Must be one of the following: ' + str(supportedProtocols))
+  print(
+      f'   PORT_PROTOCOL - Must be one of the following: {str(supportedProtocols)}'
+  )
   print('   PORT          - Either a single numeric port (Ex: 443), or a port range (Ex: 8000:8002).')
   sys.exit(1)
 
@@ -126,18 +128,14 @@ def removeIp(name, ip, mode, silence = False):
     hostgroup['ips'][mode] = ips
   if ip in ips:
     ips.remove(ip)
-  else:
-    if not silence:
-      print('IP does not exist', file=sys.stderr)
-      return 3
+  elif not silence:
+    print('IP does not exist', file=sys.stderr)
+    return 3
   writeYaml(hostgroupsFilename, content)
   return 0
 
 def createProtocolMap():
-  map = {}
-  for protocol in supportedProtocols:
-    map[protocol] = []
-  return map
+  return {protocol: [] for protocol in supportedProtocols}
 
 def listPortGroups():
   content = loadYaml(portgroupsFilename)
@@ -244,8 +242,7 @@ def addport(options, args):
     return 3
   ports.append(port)
   writeYaml(portgroupsFilename, content)
-  code = checkApplyOption(options)
-  return code
+  return checkApplyOption(options)
 
 def removeport(options, args):
   if len(args) != 3:
@@ -273,8 +270,7 @@ def removeport(options, args):
     return 3
   ports.remove(port)
   writeYaml(portgroupsFilename, content)
-  code = checkApplyOption(options)
-  return code
+  return checkApplyOption(options)
 
 
 def listhostgroups(options, args):
@@ -332,7 +328,7 @@ def apply():
   proc = subprocess.run(['salt-call', 'state.apply', 'firewall', 'queue=True'])
   return proc.returncode
 
-def main():  
+def main():
   options = []
   args = sys.argv[1:]
   for option in args:
@@ -365,7 +361,7 @@ def main():
     lockAttempts = 0
     maxAttempts = 30
     while lockAttempts < maxAttempts:
-      lockAttempts = lockAttempts + 1
+      lockAttempts += 1
       try:
         f = open(lockFile, "x")
         f.close()
@@ -374,7 +370,7 @@ def main():
         time.sleep(2)
 
     if lockAttempts == maxAttempts:
-      print("Lock file (" + lockFile + ") could not be created; proceeding without lock.")
+      print(f"Lock file ({lockFile}) could not be created; proceeding without lock.")
 
     cmd = commands.get(args[0], showUsage)
     code = cmd(options, args[1:])
@@ -382,7 +378,7 @@ def main():
     try:
       os.remove(lockFile)
     except:
-      print("Lock file (" + lockFile + ") already removed")
+      print(f"Lock file ({lockFile}) already removed")
 
   sys.exit(code)
 

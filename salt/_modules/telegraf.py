@@ -11,6 +11,4 @@ def send(data):
   dstport = 8094
 
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  sent = sock.sendto(data.encode('utf-8'), (mainip, dstport))
-
-  return sent
+  return sock.sendto(data.encode('utf-8'), (mainip, dstport))

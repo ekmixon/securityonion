@@ -33,15 +33,14 @@ def get_image_version(string) -> str:
   if ver == 'latest':
     # Version doesn't like "latest", so use a high semver
     return '99999.9.9'
-  else:
-    try:
-      Version(ver)
-    except InvalidVersion:
-      # Also return a very high semver for any version 
-      # with a dash in it since it will likely be a dev version of some kind
-      if '-' in ver:
-        return '999999.9.9'
-    return ver
+  try:
+    Version(ver)
+  except InvalidVersion:
+    # Also return a very high semver for any version 
+    # with a dash in it since it will likely be a dev version of some kind
+    if '-' in ver:
+      return '999999.9.9'
+  return ver
 
 
 def main(quiet):
@@ -70,18 +69,16 @@ def main(quiet):
       t_list.sort(key=lambda x: Version(get_image_version(x)), reverse=True)
       grouped_t_list = [ list(it) for _,it in groupby(t_list, lambda x: get_image_version(x)) ]
 
-      # Keep the 2 most current version groups
       if len(grouped_t_list) <= 2:
         continue
-      else:
-        no_prunable = False
-        for group in grouped_t_list[2:]:
-          for tag in group:
-            if not quiet: print(f'Removing image {tag}')
-            try:
-              client.images.remove(tag, force=True)
-            except docker.errors.ClientError as e:
-              print(f'Could not remove image {tag}, continuing...')
+      no_prunable = False
+      for group in grouped_t_list[2:]:
+        for tag in group:
+          if not quiet: print(f'Removing image {tag}')
+          try:
+            client.images.remove(tag, force=True)
+          except docker.errors.ClientError as e:
+            print(f'Could not remove image {tag}, continuing...')
     except (docker.errors.APIError, InvalidVersion) as e:
       print(f'so-{get_so_image_basename(t_list[0])}: {e}', file=sys.stderr)
       exit(1)

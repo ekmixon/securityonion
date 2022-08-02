@@ -39,44 +39,39 @@ def print_err(string: str):
 def check_apply(args: dict, prompt: bool = True):
   if args.apply:
     print('Configuration updated. Applying changes:')
-    return apply()
   else:
-    if prompt:
-      message = 'Configuration updated. Would you like to apply your changes now? (y/N) '
-      answer = input(message)
-      while answer.lower() not in [ 'y', 'n', '' ]:
-        answer = input(message)
-      if answer.lower() in [ 'n', '' ]:
-        return 0
-      else:
-        print('Applying changes:')
-        return apply()
-    else:
+    if not prompt:
       return 0
+    message = 'Configuration updated. Would you like to apply your changes now? (y/N) '
+    answer = input(message)
+    while answer.lower() not in [ 'y', 'n', '' ]:
+      answer = input(message)
+    if answer.lower() in [ 'n', '' ]:
+      return 0
+    print('Applying changes:')
+  return apply()
 
 
 def apply():
   salt_cmd = ['salt-call', 'state.apply', '-l', 'quiet', 'idstools.sync_files', 'queue=True']
-  update_cmd = ['so-rule-update']
   print('Syncing config files...')
   cmd = subprocess.run(salt_cmd, stdout=subprocess.DEVNULL)
-  if cmd.returncode == 0:
-    print('Updating rules...')
-    return subprocess.run(update_cmd).returncode
-  else:
+  if cmd.returncode != 0:
     return cmd.returncode
+  print('Updating rules...')
+  update_cmd = ['so-rule-update']
+  return subprocess.run(update_cmd).returncode
 
 
 def find_minion_pillar() -> str:
   regex = '^.*_(manager|managersearch|standalone|import|eval)\.sls$'
-  
+
   result = []
   for root, _, files in os.walk(minion_pillar_dir):
-    for f_minion_id in files:
-      if re.search(regex, f_minion_id):
-        result.append(os.path.join(root, f_minion_id))
-  
-  if len(result) == 0:
+    result.extend(
+        os.path.join(root, f_minion_id) for f_minion_id in files
+        if re.search(regex, f_minion_id))
+  if not result:
     print_err('Could not find manager-type pillar (eval, standalone, manager, managersearch, import). Are you running this script on the manager?')
     sys.exit(3)
   elif len(result) > 1:
@@ -105,13 +100,12 @@ def read_pillar(pillar: str):
 def write_pillar(pillar: str, content: dict):
   try:
     sids = content['idstools']['sids']
-    if sids['disabled'] is not None:
-      if len(sids['disabled']) == 0: sids['disabled'] = None
-    if sids['enabled'] is not None:
-      if len(sids['enabled']) == 0: sids['enabled'] = None
-    if sids['modify'] is not None:
-      if len(sids['modify']) == 0: sids['modify'] = None
-
+    if sids['disabled'] is not None and len(sids['disabled']) == 0:
+      sids['disabled'] = None
+    if sids['enabled'] is not None and len(sids['enabled']) == 0:
+      sids['enabled'] = None
+    if sids['modify'] is not None and len(sids['modify']) == 0:
+      sids['modify'] = None
     with open(pillar, 'w') as f:
       return yaml.dump(content, f, default_flow_style=False)
   except Exception as e:
@@ -120,17 +114,15 @@ def write_pillar(pillar: str, content: dict):
 
 
 def check_sid_pattern(sid_pattern: str):
-  message = f'SID {sid_pattern} is not valid, did you forget the \"re:\" prefix for a regex pattern?'
-
   if sid_pattern.startswith('re:'):
     r_string = sid_pattern[3:]
-    if not valid_regex(r_string):
-      print_err('Invalid regex pattern.')
-      return False
-    else:
+    if valid_regex(r_string):
       return True
+    print_err('Invalid regex pattern.')
   else:
     sid: int
+    message = f'SID {sid_pattern} is not valid, did you forget the \"re:\" prefix for a regex pattern?'
+
     try:
       sid = int(sid_pattern)
     except:
@@ -139,9 +131,8 @@ def check_sid_pattern(sid_pattern: str):
 
     if sid >= 0:
       return True
-    else:
-      print_err(message)
-      return False
+    print_err(message)
+  return False
 
 
 def valid_regex(pattern: str):
@@ -187,7 +178,7 @@ def add_rem_disabled(args: dict):
 
   if not sids_key_exists(pillar_dict, 'disabled'):
     pillar_dict['idstools']['sids']['disabled'] = None
-  
+
   if args.remove:
     temp_pillar_dict = rem_from_sids(pillar_dict, 'disabled', args.sid_pattern)
   else:
@@ -205,11 +196,10 @@ def add_rem_disabled(args: dict):
 
     modify = pillar_dict.get('idstools', {}).get('sids', {}).get('modify')
     if modify is not None:
-      rem_candidates = []
-      for action in modify:
-        if action.startswith(f'{args.sid_pattern} '):
-          rem_candidates.append(action)
-      if len(rem_candidates) > 0:
+      if rem_candidates := [
+          action for action in modify
+          if action.startswith(f'{args.sid_pattern} ')
+      ]:
         for item in rem_candidates:
           print(f' - {item}')
         answer = input(f'The above modify actions contain {args.sid_pattern}. Would you like to remove them? (Y/n) ')
@@ -223,7 +213,7 @@ def add_rem_disabled(args: dict):
           pillar_dict['idstools']['sids']['modify'] = modify
 
   write_pillar(pillar=args.pillar, content=pillar_dict)
-  
+
   salt_proc = check_apply(args)
   return salt_proc
 
@@ -234,12 +224,12 @@ def list_disabled_rules(args: dict):
   disabled = pillar_dict.get('idstools', {}).get('sids', {}).get('disabled')
   if disabled is None:
     print('No rules disabled.')
-    return 0
   else:
     print('Disabled rules:')
     for rule in disabled:
       print(f'  - {rule}')
-    return 0
+
+  return 0
 
 
 def add_rem_enabled(args: dict):
@@ -257,17 +247,16 @@ def add_rem_enabled(args: dict):
     temp_pillar_dict = rem_from_sids(pillar_dict, 'enabled', args.sid_pattern)
   else:
     temp_pillar_dict = add_to_sids(pillar_dict, 'enabled', args.sid_pattern)
-  
+
   if temp_pillar_dict['idstools']['sids']['enabled'] == pillar_dict['idstools']['sids']['enabled']:
     salt_proc = check_apply(args, prompt=False)
     return salt_proc
   else:
     pillar_dict = temp_pillar_dict
 
-  if not args.remove:
-    if sids_key_exists(pillar_dict, 'disabled'):
-      pillar_dict = rem_from_sids(pillar_dict, 'disabled', args.sid_pattern, optional=True)
-  
+  if not args.remove and sids_key_exists(pillar_dict, 'disabled'):
+    pillar_dict = rem_from_sids(pillar_dict, 'disabled', args.sid_pattern, optional=True)
+
   write_pillar(pillar=args.pillar, content=pillar_dict)
 
   salt_proc = check_apply(args)
@@ -280,12 +269,12 @@ def list_enabled_rules(args: dict):
   enabled = pillar_dict.get('idstools', {}).get('sids', {}).get('enabled')
   if enabled is None:
     print('No rules explicitly enabled.')
-    return 0
   else:
     print('Enabled rules:')
     for rule in enabled:
       print(f'  - {rule}')
-    return 0
+
+  return 0
 
 
 def add_rem_modify(args: dict):
@@ -308,7 +297,7 @@ def add_rem_modify(args: dict):
     temp_pillar_dict = rem_from_sids(pillar_dict, 'modify', string_val)
   else:
     temp_pillar_dict = add_to_sids(pillar_dict, 'modify', string_val)
-    
+
   if temp_pillar_dict['idstools']['sids']['modify'] == pillar_dict['idstools']['sids']['modify']:
     salt_proc = check_apply(args, prompt=False)
     return salt_proc
@@ -316,12 +305,11 @@ def add_rem_modify(args: dict):
     pillar_dict = temp_pillar_dict
 
   # TODO: Determine if a rule should be removed from disabled if modified.
-  if not args.remove:
-    if sids_key_exists(pillar_dict, 'disabled'):
-      pillar_dict = rem_from_sids(pillar_dict, 'disabled', args.sid_pattern, optional=True) 
+  if not args.remove and sids_key_exists(pillar_dict, 'disabled'):
+    pillar_dict = rem_from_sids(pillar_dict, 'disabled', args.sid_pattern, optional=True) 
 
   write_pillar(pillar=args.pillar, content=pillar_dict)
-  
+
   salt_proc = check_apply(args)
   return salt_proc
   
@@ -332,12 +320,12 @@ def list_modified_rules(args: dict):
   modify = pillar_dict.get('idstools', {}).get('sids', {}).get('modify')
   if modify is None:
     print('No rules currently modified.')
-    return 0
   else:
     print('Modified rules + modifications:')
     for rule in modify:
       print(f'  - {rule}')
-    return 0
+
+  return 0
 
 
 def sigint_handler(*_):
@@ -403,7 +391,7 @@ def main():
 
   enabled_list = enabled_sub.add_parser('list')
   enabled_list.set_defaults(func=list_enabled_rules)
-  
+
 
   search_term_help='A quoted regex search term (ex: "\$EXTERNAL_NET")'
   replace_term_help='The text to replace the search term with'
@@ -432,7 +420,7 @@ def main():
 
   # Begin parse + run
   args = main_parser.parse_args(sys.argv[1:])
-  
+
   if not hasattr(args, 'remove'):
     args.remove = False
 
@@ -443,15 +431,14 @@ def main():
   else:
     if args.command is None:
       main_parser.print_help()
-    else:
-      if args.command == 'disabled':
-        disabled.print_help()
-      elif args.command == 'enabled':
-        enabled.print_help()
-      elif args.command == 'modify':
-        modify.print_help()
+    elif args.command == 'disabled':
+      disabled.print_help()
+    elif args.command == 'enabled':
+      enabled.print_help()
+    elif args.command == 'modify':
+      modify.print_help()
     sys.exit(0)
-  
+
   sys.exit(exit_code)
 
 
